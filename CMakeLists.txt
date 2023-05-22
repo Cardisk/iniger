@@ -3,4 +3,4 @@ project(iniger)
 
 set(CMAKE_CXX_STANDARD 23)
 
-add_executable(iniger main.cpp)
+add_executable(iniger main.cpp iniger.cpp iniger.h)
