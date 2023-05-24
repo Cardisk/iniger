@@ -43,6 +43,8 @@
 
 namespace ini {
     class Section {
+    public:
+        explicit Section(std::string &sec_name) : sec_name(sec_name) {}
     private:
         std::string sec_name;
         std::unordered_map<std::string, std::string> props;
@@ -50,10 +52,15 @@ namespace ini {
     };
 
     class Object {
+    public:
+        explicit Object(std::string &file_path) : file_path(file_path) {}
     private:
         std::string file_path;
         std::unordered_map<std::string, Section> sections;
     };
+
+    bool add_property(std::string &section_path, const std::string &key, const std::string &value);
+    bool add_section(std::string &section_path, const std::string &name);
 
     Object read(const std::string &path);
     void write(Object &ini);
