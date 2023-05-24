@@ -38,13 +38,28 @@
  */
 
 #include <string>
+#include <utility>
 #include <vector>
 #include <unordered_map>
 
 namespace ini {
     class Section {
     public:
-        explicit Section(std::string &sec_name) : sec_name(sec_name) {}
+        explicit Section() = default;
+        explicit Section(std::string sec_name) : sec_name(std::move(sec_name)) {}
+
+        [[nodiscard]] const std::string &get_name() const {
+            return this->sec_name;
+        }
+
+        [[nodiscard]] std::unordered_map<std::string, std::string> &get_props() {
+            return this->props;
+        }
+
+        [[nodiscard]] std::vector<Section> &get_subsecs() {
+            return this->subsecs;
+        }
+
     private:
         std::string sec_name;
         std::unordered_map<std::string, std::string> props;
@@ -53,14 +68,23 @@ namespace ini {
 
     class Object {
     public:
-        explicit Object(std::string &file_path) : file_path(file_path) {}
+        explicit Object(std::string file_path) : file_path(std::move(file_path)) {}
+
+        [[nodiscard]] const std::string &get_file_path() const {
+            return file_path;
+        }
+
+        [[nodiscard]] const std::unordered_map<std::string, Section> &get_sections() const {
+            return sections;
+        }
+
     private:
         std::string file_path;
         std::unordered_map<std::string, Section> sections;
     };
 
-    bool add_property(std::string &section_path, const std::string &key, const std::string &value);
-    bool add_section(std::string &section_path, const std::string &name);
+    bool add_property(Object &ini, std::string &section_path, const std::string &key, const std::string &value);
+    bool add_section(Object &ini, std::string &section_path, const std::string &new_section_name);
 
     Object read(const std::string &path);
     void write(Object &ini);
