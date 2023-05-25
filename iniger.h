@@ -21,7 +21,7 @@
  *
  * DERIVED FEATURES:
  *
- * all the properties declared before any section are defined as "global".
+ * all the properties declared before any section are defined as "global". ✅
  *
  * ":" can be used instead of "=".
  *
@@ -30,9 +30,9 @@
  *
  * "#" can be used instead of ";" to declare a comment.
  *
- * duplicate definition of the same property may cause an abort, override the older value or define a multi-value. ✅
+ * duplicate definition of the same property may cause an abort, override the older value or define a multi-value. (abort) ✅
  *
- * duplicate definition of a section will merge the properties.
+ * duplicate definition of a section will merge the properties. ✅
  *
  * quoted values are used to explicit define spaces inside values.
  */
@@ -47,6 +47,14 @@ namespace ini {
     public:
         explicit Section() = default;
         explicit Section(std::string sec_name) : sec_name(std::move(sec_name)) {}
+
+        [[nodiscard]] bool props_empty() const {
+            return props.empty();
+        }
+
+        [[nodiscard]] bool subsecs_empty() const {
+            return props.empty();
+        }
 
         [[nodiscard]] const std::string &get_name() const {
             return this->sec_name;
@@ -68,7 +76,9 @@ namespace ini {
 
     class Object {
     public:
-        explicit Object(std::string file_path) : file_path(std::move(file_path)) {}
+        explicit Object(std::string file_path) : file_path(std::move(file_path)) {
+            sections.insert(std::make_pair("global", Section("global")));
+        }
 
         [[nodiscard]] const std::string &get_file_path() const {
             return file_path;
@@ -83,10 +93,25 @@ namespace ini {
         std::unordered_map<std::string, Section> sections;
     };
 
+    class Extension_error : public std::exception {
+    public:
+        explicit Extension_error() = default;
+        explicit Extension_error(std::string &msg) : m_msg(std::move(msg)) {}
+
+        [[nodiscard]] const char *what() const noexcept override {
+            return m_msg.c_str();
+        }
+
+    private:
+        std::string m_msg;
+    };
+
     bool add_property(Object &ini, std::string &section_path, const std::string &key, const std::string &value);
+
     bool add_section(Object &ini, std::string &section_path, const std::string &new_section_name);
 
     Object read(const std::string &path);
+
     void write(Object &ini);
 }
 

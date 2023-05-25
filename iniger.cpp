@@ -48,9 +48,27 @@ bool ini::add_section(ini::Object &ini, std::string &section_path, const std::st
 }
 
 ini::Object ini::read(const std::string &path) {
-    return ini::Object("");
+    if (!path.ends_with(".ini")) {
+        std::string error = "ERROR: file \"" + path + "\" has an incompatible extension type\n";
+        throw ini::Extension_error(error);
+    }
+
+    return ini::Object(path);
 }
 
 void ini::write(ini::Object &ini) {
+    if (!ini.get_file_path().ends_with(".ini")) {
+        std::string error = "ERROR: file \"" + ini.get_file_path() + "\" has an incompatible extension type\n";
+        throw ini::Extension_error(error);
+    }
 
+    std::string content;
+    Section gl = ini.get_sections().at("global");
+    if (!gl.props_empty()) {
+        for (auto &kv : gl.get_props()) {
+            content += kv.first + " = " + kv.second + "\n";
+        }
+    }
+
+    // TODO: recursive algorithm to append sections and subsections
 }
