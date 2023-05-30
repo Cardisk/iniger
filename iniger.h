@@ -8,35 +8,37 @@
 /*
  * ORIGINAL PARSER:
  *
- * key symbol cannot contain "=" and ";" inside the Windows implementation.
+ * ✅ (iniger.cpp:70) key symbol cannot contain "=" and ";" inside the Windows implementation.
  *
- * [symbol] defines a section. There is no section ending until the EOF or another section declaration. ✅
- * originally sections cannot be nested.
+ * [symbol] defines a section. There is no section ending until the EOF or another section declaration.
+ * (originally sections cannot be nested).
  *
- * case-insensitive.
+ * ✅ (iniger.cpp:80) case-insensitive.
  *
  * ";" at the beginning defines a comment that will be ignored.
  *
- * the order of sections and properties is irrelevant. ✅
+ * ✅ (just by using an unordered_map) the order of sections and properties is irrelevant.
  *
  * DERIVED FEATURES:
  *
- * all the properties declared before any section are defined as "global". ✅
+ * ✅ (iniger.cpp:72) all the properties declared before any section are defined as "global".
  *
- * ":" can be used instead of "=".
+ * ✅ (iniger.cpp:80) ":" can be used instead of "=".
  *
- * section nesting is allowed with the usage of a "." notation. ✅
+ * section nesting is allowed with the usage of a "." notation.
  * relative nesting is allowed without specifying the upper section.
  *
  * "#" can be used instead of ";" to declare a comment.
  *
- * duplicate definition of the same property may cause an abort, override the older value or define a multi-value. (abort) ✅
+ * ✅ ([abort] iniger.cpp:32) duplicate definition of the same property may cause an abort, override the older value or
+ * define a multi-value.
  *
- * duplicate definition of a section will merge the properties. ✅
+ * ✅ (if the section exists, add_property will append them) duplicate definition of a section will merge the properties.
  *
  * quoted values are used to explicit define spaces inside values.
  */
 
+#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -58,6 +60,10 @@ namespace ini {
 
         [[nodiscard]] const std::string &get_name() const {
             return this->sec_name;
+        }
+
+        void set_name(const std::string &name) {
+            this->sec_name = name;
         }
 
         [[nodiscard]] std::unordered_map<std::string, std::string> &get_props() {
@@ -84,7 +90,7 @@ namespace ini {
             return file_path;
         }
 
-        [[nodiscard]] const std::unordered_map<std::string, Section> &get_sections() const {
+        [[nodiscard]] std::unordered_map<std::string, Section> &get_sections() {
             return sections;
         }
 
@@ -108,11 +114,11 @@ namespace ini {
 
     bool add_property(Object &ini, std::string &section_path, const std::string &key, const std::string &value);
 
-    bool add_section(Object &ini, std::string &section_path, const std::string &new_section_name);
+    bool add_section(Object &ini, const std::string &new_section_name, const std::string &section_path);
 
     Object read(const std::string &path);
 
-    void write(Object &ini);
+    bool write(Object &ini, char key_val_separator);
 }
 
 #endif //INIGER_H
