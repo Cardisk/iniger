@@ -91,7 +91,12 @@ bool ini::write(ini::Object &ini, const char key_val_separator) {
             // case-insensitive.
             content += to_lower(const_cast<std::string &>(kv.first))
                     + " " + std::to_string(key_val_separator)
-                    + " " + to_lower(kv.second) + "\n";
+                    + " ";
+            // quoted values are used to explicit define spaces inside values.
+            if (kv.second.contains(' ')) content += "\"";
+            content += kv.second;
+            if (kv.second.contains(' ')) content += "\"";
+            content += "\n";
         }
     }
 

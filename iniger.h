@@ -35,7 +35,7 @@
  *
  * ✅ (if the section exists, add_property will append them) duplicate definition of a section will merge the properties.
  *
- * quoted values are used to explicit define spaces inside values.
+ * ✅ (iniger.cpp:96) quoted values are used to explicit define spaces inside values.
  */
 
 #include <iostream>
