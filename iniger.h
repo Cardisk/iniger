@@ -112,6 +112,32 @@ namespace ini {
         std::string m_msg;
     };
 
+    class Separator_error : public std::exception {
+    public:
+        explicit Separator_error() = default;
+        explicit Separator_error(std::string &msg) : m_msg(std::move(msg)) {}
+
+        [[nodiscard]] const char *what() const noexcept override {
+            return m_msg.c_str();
+        }
+
+    private:
+        std::string m_msg;
+    };
+
+    class Key_error : public std::exception {
+    public:
+        explicit Key_error() = default;
+        explicit Key_error(std::string &msg) : m_msg(std::move(msg)) {}
+
+        [[nodiscard]] const char *what() const noexcept override {
+            return m_msg.c_str();
+        }
+
+    private:
+        std::string m_msg;
+    };
+
     bool add_property(Object &ini, std::string &section_path, const std::string &key, const std::string &value);
 
     bool add_section(Object &ini, const std::string &new_section_name, const std::string &section_path);

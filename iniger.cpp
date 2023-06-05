@@ -4,6 +4,8 @@
 
 #include "iniger.h"
 
+#include <fstream>
+
 std::vector<std::string> string_split(std::string str, const std::string &delim) {
     std::vector<std::string> v;
     size_t next_pos;
@@ -67,6 +69,38 @@ std::string &to_lower(std::string &str) {
     return str;
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
+void section_to_string(std::string &str, const char key_val_separator, const std::string &section_name, ini::Section &s) {
+    if (section_name != "global") str += "[" + section_name + "]";
+
+    if (!s.props_empty()) {
+        for (auto &kv : s.get_props()) {
+            // key symbol cannot contain "=" and ";" inside the Windows implementation.
+            if (kv.first.contains("=") || kv.first.contains(";")) {
+                std::string error = "ERROR: key \"" + kv.first + R"(" cannot contain any "=" or ";" symbol)" + "\n";
+                throw ini::Key_error(error);
+            }
+            // case-insensitive.
+            str += to_lower(const_cast<std::string &>(kv.first))
+                       + " " + std::to_string(key_val_separator)
+                       + " ";
+            // quoted values are used to explicit define spaces inside values.
+            if (kv.second.contains(' ')) str += "\"";
+            str += kv.second;
+            if (kv.second.contains(' ')) str += "\"";
+            str += "\n";
+        }
+    }
+
+    if (!s.get_subsecs().empty()) {
+        for (auto &sub : s.get_subsecs()) {
+            section_to_string(str, key_val_separator, section_name + sub.get_name(), sub);
+        }
+    }
+}
+#pragma clang diagnostic pop
+
 bool ini::write(ini::Object &ini, const char key_val_separator) {
     if (!ini.get_file_path().ends_with(".ini")) {
         std::string error = "ERROR: file \"" + ini.get_file_path() + "\" has an incompatible extension type\n";
@@ -75,31 +109,22 @@ bool ini::write(ini::Object &ini, const char key_val_separator) {
 
     if (key_val_separator != '=' && key_val_separator != ':') {
         std::string error = "ERROR: separator \"" + std::to_string(key_val_separator) + "\" isn't supported\n";
-        std::cerr << error;
-        return false;
+        throw ini::Separator_error(error);
     }
 
     std::string content;
-    Section gl = ini.get_sections().at("global");
-    if (!gl.props_empty()) {
-        for (auto &kv : gl.get_props()) {
-            // key symbol cannot contain "=" and ";" inside the Windows implementation.
-            if (kv.first.contains("=") || kv.first.contains(";")) {
-                std::cerr << "ERROR: key \"" + kv.first + R"(" cannot contain any "=" or ";" symbol)" << std::endl;
-                return false;
-            }
-            // case-insensitive.
-            content += to_lower(const_cast<std::string &>(kv.first))
-                    + " " + std::to_string(key_val_separator)
-                    + " ";
-            // quoted values are used to explicit define spaces inside values.
-            if (kv.second.contains(' ')) content += "\"";
-            content += kv.second;
-            if (kv.second.contains(' ')) content += "\"";
-            content += "\n";
+    for (auto &kv : ini.get_sections()) {
+        try {
+            section_to_string(content, key_val_separator, to_lower(const_cast<std::string &>(kv.first)), kv.second);
+        } catch (std::exception &e) {
+            std::cerr << e.what();
+            return false;
         }
     }
 
-    // TODO: recursive algorithm to append sections and subsections
+    std::ofstream output_file(ini.get_file_path());
+    output_file << content;
+    output_file.close();
+
     return true;
 }
