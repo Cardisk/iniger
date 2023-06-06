@@ -6,6 +6,12 @@
 
 #include <fstream>
 
+std::string &to_lower(std::string &str) {
+    std::transform(str.begin(), str.end(), str.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    return str;
+}
+
 std::vector<std::string> string_split(std::string str, const std::string &delim) {
     std::vector<std::string> v;
     size_t next_pos;
@@ -20,7 +26,7 @@ std::vector<std::string> string_split(std::string str, const std::string &delim)
     return v;
 }
 
-bool ini::add_property(ini::Object &ini, std::string &section_path, const std::string &key, const std::string &value) {
+bool ini::add_property(ini::Object &ini, std::string &section_path, std::string &key, const std::string &value) {
     auto path = string_split(section_path, ".");
     Section sec;
     for (auto &s : path) {
@@ -31,7 +37,8 @@ bool ini::add_property(ini::Object &ini, std::string &section_path, const std::s
         }
     }
 
-    return sec.get_props().insert(std::make_pair(key, value)).second;
+    // case-insensitive.
+    return sec.get_props().insert(std::make_pair(to_lower(key), value)).second;
 }
 
 bool ini::add_section(ini::Object &ini, const std::string &new_section_name, const std::string &section_path = "") {
@@ -63,12 +70,6 @@ ini::Object ini::read(const std::string &path) {
     return ini::Object(path);
 }
 
-std::string &to_lower(std::string &str) {
-    std::transform(str.begin(), str.end(), str.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
-    return str;
-}
-
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "misc-no-recursion"
 void section_to_string(std::string &str, const char key_val_separator, const std::string &section_name, ini::Section &s) {
@@ -81,10 +82,10 @@ void section_to_string(std::string &str, const char key_val_separator, const std
                 std::string error = "ERROR: key \"" + kv.first + R"(" cannot contain any "=" or ";" symbol)" + "\n";
                 throw ini::Key_error(error);
             }
-            // case-insensitive.
-            str += to_lower(const_cast<std::string &>(kv.first))
-                       + " " + std::to_string(key_val_separator)
-                       + " ";
+            // assuming case-insensitive-ness.
+            str += kv.first
+                    + " " + std::to_string(key_val_separator)
+                    + " ";
             // quoted values are used to explicit define spaces inside values.
             if (kv.second.contains(' ')) str += "\"";
             str += kv.second;
@@ -115,7 +116,7 @@ bool ini::write(ini::Object &ini, const char key_val_separator) {
     std::string content;
     for (auto &kv : ini.get_sections()) {
         try {
-            section_to_string(content, key_val_separator, to_lower(const_cast<std::string &>(kv.first)), kv.second);
+            section_to_string(content, key_val_separator, kv.first, kv.second);
         } catch (std::exception &e) {
             std::cerr << e.what();
             return false;

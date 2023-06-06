@@ -138,7 +138,7 @@ namespace ini {
         std::string m_msg;
     };
 
-    bool add_property(Object &ini, std::string &section_path, const std::string &key, const std::string &value);
+    bool add_property(Object &ini, std::string &section_path, std::string &key, const std::string &value);
 
     bool add_section(Object &ini, const std::string &new_section_name, const std::string &section_path);
 
