@@ -6,6 +6,106 @@
 
 #include <fstream>
 
+typedef enum Token_Type {
+    E_O_F,
+    IDENTIFIER,
+    NUMBER,
+    SEPARATOR,
+    SECTION,
+} Token_Type;
+
+class Token {
+public:
+    explicit Token(Token_Type type = E_O_F, std::string txt = "") : type(type), txt(std::move(txt)) {}
+
+    Token_Type type;
+    std::string txt;
+};
+
+class Lexer {
+public:
+    explicit Lexer(std::string source, std::string file_path) : source(std::move(source)), file_path(std::move(file_path)), tokens({}) {}
+
+    std::vector<Token> scan_tokens() {
+        while (!end()) {
+            start = current;
+            if (!scan_token()) {
+                std::cerr << "ERROR: something bad happened.\n";
+                tokens.clear();
+                return {};
+            }
+        }
+
+        return tokens;
+    }
+private:
+    char advance() {
+        return source[current++];
+    }
+
+    char peek() {
+        if (end()) return '\0';
+        return source[current];
+    }
+
+    bool scan_token() {
+        char c = advance();
+        switch (c) {
+            case '[':
+                while (peek() != ']' && !end()) advance();
+                if (end()) {
+                    std::cerr << "ERROR: unclosed section definition\n";
+                    return false;
+                }
+                advance();
+                tokens.emplace_back(SECTION, source.substr(start + 1, current - (start + 1) - 1));
+                break;
+            case ':':
+            case '=':
+                tokens.emplace_back(SEPARATOR, source.substr(start, current - start));
+                break;
+            case ';':
+            case '#':
+                while (peek() != '\n' && !end()) advance();
+                break;
+            case ' ':
+                // ignore
+                break;
+            case '\n':
+                line++;
+                break;
+            default:
+                if (std::isalpha(c)) {
+                    while (std::isalpha(peek()) ||
+                            std::isdigit(peek()) ||
+                                peek() == '.' || peek() == '_') advance();
+                    tokens.emplace_back(IDENTIFIER, source.substr(start, current - start));
+                    break;
+                } else if (std::isdigit(c)) {
+                    while (std::isdigit(peek()) || peek() == '.' || peek() == 'x' || peek() == 'b') advance();
+                    tokens.emplace_back(NUMBER, source.substr(start, current - start));
+                    break;
+                }
+
+                std::cerr << "ERROR: unexpected character '" << c << "' found at '" << file_path << ":" << line << "'\n";
+                return false;
+        }
+        return true;
+    }
+
+    bool end() {
+        return current >= source.size();
+    }
+
+    const std::string source;
+    std::vector<Token> tokens;
+    std::string file_path;
+    int line = 1;
+    int start = 0;
+    int current = 0;
+};
+
+
 std::string &to_lower(std::string &str) {
     std::transform(str.begin(), str.end(), str.begin(),
                    [](unsigned char c) { return std::tolower(c); });
@@ -143,9 +243,32 @@ ini::Object ini::read(const std::string &path) {
         throw ini::Extension_error(error);
     }
 
+    ini::Object ini(path);
 
+    std::string text;
 
-    return ini::Object(path);
+    std::ifstream file;
+    if (!file.is_open()) file.open(path);
+    if (file.is_open()) {
+        std::string line;
+        while (file.good()) {
+            std::getline(file, line);
+            text += line + "\n";
+        }
+    }
+    file.close();
+
+    if (text.empty()) return ini;
+
+    Lexer lexer(text, path);
+    std::vector<Token> t = lexer.scan_tokens();
+
+    // DEBUG
+    for (auto &a : t) {
+        std::cout << a.txt << std::endl;
+    }
+
+    return ini;
 }
 
 bool ini::write(ini::Object &ini, const char key_val_separator) {
