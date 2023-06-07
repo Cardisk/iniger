@@ -82,7 +82,8 @@ std::vector<std::string> tokenize(std::string &source) {
 
         std::string str = source.substr(0, next_pos);
 
-        //if (str.ends_with(",")) str.pop_back();
+        // ";" or "#" at the beginning defines a comment that will be ignored.
+        if (str.starts_with(';') || str.starts_with('#')) str.clear();
 
         if (str.ends_with(":") || str.ends_with('=')) {
             is_key = true;

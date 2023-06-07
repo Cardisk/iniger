@@ -15,7 +15,7 @@
  *
  * ✅ (iniger.cpp:80) case-insensitive.
  *
- * ";" at the beginning defines a comment that will be ignored.
+ * ✅ ";" at the beginning defines a comment that will be ignored.
  *
  * ✅ (just by using an unordered_map) the order of sections and properties is irrelevant.
  *
@@ -28,7 +28,7 @@
  * section nesting is allowed with the usage of a "." notation.
  * relative nesting is allowed without specifying the upper section.
  *
- * "#" can be used instead of ";" to declare a comment.
+ * ✅ "#" can be used instead of ";" to declare a comment.
  *
  * ✅ ([abort] iniger.cpp:32) duplicate definition of the same property may cause an abort, override the older value or
  * define a multi-value.
