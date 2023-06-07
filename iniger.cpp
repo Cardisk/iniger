@@ -12,7 +12,7 @@ std::string &to_lower(std::string &str) {
     return str;
 }
 
-std::vector<std::string> string_split(std::string str, const std::string &delim) {
+std::vector<std::string> string_split(std::string &str, const std::string &delim) {
     std::vector<std::string> v;
     size_t next_pos;
     do {
@@ -29,7 +29,7 @@ std::vector<std::string> string_split(std::string str, const std::string &delim)
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "misc-no-recursion"
 void section_to_string(std::string &str, const char key_val_separator, const std::string &section_name, ini::Section &s) {
-    if (section_name != "global") str += "[" + section_name + "]";
+    if (section_name != "global") str += "[" + section_name + "]\n";
 
     if (!s.props_empty()) {
         for (auto &kv : s.get_props()) {
@@ -99,19 +99,22 @@ std::vector<std::string> tokenize(std::string &source) {
     return v;
 }
 
-bool ini::add_property(ini::Object &ini, std::string &section_path, std::string &key, const std::string &value) {
-    auto path = string_split(section_path, ".");
-    Section sec;
-    for (auto &s : path) {
-        try {
-            sec = ini.get_sections().at(s);
-        } catch (std::out_of_range &e) {
-            return false;
+bool ini::add_property(ini::Object &ini, const std::string &section_path, const std::string &key, const std::string &value) {
+    Section &sec = ini.get_sections().at("global");
+
+    if (section_path != "global") {
+        auto path = string_split(const_cast<std::string &>(section_path), ".");
+        for (auto &s: path) {
+            try {
+                sec = ini.get_sections().at(s);
+            } catch (std::out_of_range &e) {
+                return false;
+            }
         }
     }
 
     // case-insensitive.
-    return sec.get_props().insert(std::make_pair(to_lower(key), value)).second;
+    return sec.get_props().insert(std::make_pair(to_lower(const_cast<std::string &>(key)), value)).second;
 }
 
 bool ini::add_section(ini::Object &ini, const std::string &new_section_name, const std::string &section_path = "") {
@@ -121,7 +124,7 @@ bool ini::add_section(ini::Object &ini, const std::string &new_section_name, con
         return ini.get_sections().insert(std::make_pair(new_section_name, sec)).second;
     }
 
-    auto path = string_split(section_path, ".");
+    auto path = string_split(const_cast<std::string &>(section_path), ".");
     for (auto &s : path) {
         try {
             sec = ini.get_sections().at(s);
