@@ -26,6 +26,78 @@ std::vector<std::string> string_split(std::string str, const std::string &delim)
     return v;
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
+void section_to_string(std::string &str, const char key_val_separator, const std::string &section_name, ini::Section &s) {
+    if (section_name != "global") str += "[" + section_name + "]";
+
+    if (!s.props_empty()) {
+        for (auto &kv : s.get_props()) {
+            // key symbol cannot contain "=" and ";" inside the Windows implementation.
+            if (kv.first.contains("=") || kv.first.contains(";")) {
+                std::string error = "ERROR: key \"" + kv.first + R"(" cannot contain any "=" or ";" symbol)" + "\n";
+                throw ini::Key_error(error);
+            }
+            // assuming case-insensitive-ness.
+            str += kv.first
+                   + " " + std::to_string(key_val_separator)
+                   + " ";
+            // quoted values are used to explicit define spaces inside values.
+            if (kv.second.contains(' ')) str += "\"";
+            str += kv.second;
+            if (kv.second.contains(' ')) str += "\"";
+            str += "\n";
+        }
+    }
+
+    if (!s.get_subsecs().empty()) {
+        for (auto &sub : s.get_subsecs()) {
+            section_to_string(str, key_val_separator, section_name + sub.get_name(), sub);
+        }
+    }
+}
+#pragma clang diagnostic pop
+
+void trim_left(std::string &str) {
+    while (str.starts_with(" ") || str.starts_with("\t")) {
+        str.erase(0, 1);
+    }
+}
+
+std::vector<std::string> tokenize(std::string &source) {
+    std::vector<std::string> v;
+    while (!source.empty()) {
+        bool is_key = false;
+        char key_val_separator;
+        trim_left(source);
+
+        size_t next_pos = source.find(' ');
+        if (next_pos == std::string::npos) {
+            if (!source.empty()) {
+                v.push_back(source);
+                source.clear();
+            }
+            break;
+        }
+
+        std::string str = source.substr(0, next_pos);
+
+        //if (str.ends_with(",")) str.pop_back();
+
+        if (str.ends_with(":") || str.ends_with('=')) {
+            is_key = true;
+            key_val_separator = *str.end();
+            str.pop_back();
+        }
+
+        if (!str.empty()) v.push_back(str);
+        if (is_key) v.emplace_back(std::to_string(key_val_separator));
+        source.erase(0, next_pos);
+    }
+
+    return v;
+}
+
 bool ini::add_property(ini::Object &ini, std::string &section_path, std::string &key, const std::string &value) {
     auto path = string_split(section_path, ".");
     Section sec;
@@ -67,40 +139,10 @@ ini::Object ini::read(const std::string &path) {
         throw ini::Extension_error(error);
     }
 
+
+
     return ini::Object(path);
 }
-
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "misc-no-recursion"
-void section_to_string(std::string &str, const char key_val_separator, const std::string &section_name, ini::Section &s) {
-    if (section_name != "global") str += "[" + section_name + "]";
-
-    if (!s.props_empty()) {
-        for (auto &kv : s.get_props()) {
-            // key symbol cannot contain "=" and ";" inside the Windows implementation.
-            if (kv.first.contains("=") || kv.first.contains(";")) {
-                std::string error = "ERROR: key \"" + kv.first + R"(" cannot contain any "=" or ";" symbol)" + "\n";
-                throw ini::Key_error(error);
-            }
-            // assuming case-insensitive-ness.
-            str += kv.first
-                    + " " + std::to_string(key_val_separator)
-                    + " ";
-            // quoted values are used to explicit define spaces inside values.
-            if (kv.second.contains(' ')) str += "\"";
-            str += kv.second;
-            if (kv.second.contains(' ')) str += "\"";
-            str += "\n";
-        }
-    }
-
-    if (!s.get_subsecs().empty()) {
-        for (auto &sub : s.get_subsecs()) {
-            section_to_string(str, key_val_separator, section_name + sub.get_name(), sub);
-        }
-    }
-}
-#pragma clang diagnostic pop
 
 bool ini::write(ini::Object &ini, const char key_val_separator) {
     if (!ini.get_file_path().ends_with(".ini")) {
