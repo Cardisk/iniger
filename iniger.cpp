@@ -9,7 +9,7 @@
 typedef enum Token_Type {
     E_O_F,
     IDENTIFIER,
-    NUMBER,
+    VALUE,
     SEPARATOR,
     SECTION,
 } Token_Type;
@@ -60,6 +60,15 @@ private:
                 advance();
                 tokens.emplace_back(SECTION, source.substr(start + 1, current - (start + 1) - 1));
                 break;
+            case '"':
+                while (peek() != '"' && !end()) advance();
+                if (end()) {
+                    std::cerr << "ERROR: unclosed string definition\n";
+                    return false;
+                }
+                advance();
+                tokens.emplace_back(VALUE, source.substr(start, current - (start + 1) - 1));
+                break;
             case ':':
             case '=':
                 tokens.emplace_back(SEPARATOR, source.substr(start, current - start));
@@ -83,7 +92,7 @@ private:
                     break;
                 } else if (std::isdigit(c)) {
                     while (std::isdigit(peek()) || peek() == '.' || peek() == 'x' || peek() == 'b') advance();
-                    tokens.emplace_back(NUMBER, source.substr(start, current - start));
+                    tokens.emplace_back(VALUE, source.substr(start, current - start));
                     break;
                 }
 
