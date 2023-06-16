@@ -70,33 +70,31 @@ namespace ini {
             return this->props;
         }
 
-        [[nodiscard]] std::vector<Section> &get_subsecs() {
+        [[nodiscard]] std::unordered_map<std::string, Section> &get_subsecs() {
             return this->subsecs;
         }
 
     private:
         std::string sec_name;
         std::unordered_map<std::string, std::string> props;
-        std::vector<Section> subsecs;
+        std::unordered_map<std::string, Section> subsecs;
     };
 
     class Object {
     public:
-        explicit Object(std::string file_path) : file_path(std::move(file_path)) {
-            sections.insert(std::make_pair("global", Section("global")));
-        }
+        explicit Object(std::string file_path) : file_path(std::move(file_path)), global(Section("global")) {}
 
         [[nodiscard]] const std::string &get_file_path() const {
             return file_path;
         }
 
-        [[nodiscard]] std::unordered_map<std::string, Section> &get_sections() {
-            return sections;
+        [[nodiscard]] Section &get_global() {
+            return global;
         }
 
     private:
         std::string file_path;
-        std::unordered_map<std::string, Section> sections;
+        Section global;
     };
 
     class Extension_error : public std::exception {

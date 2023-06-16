@@ -6,12 +6,42 @@
 
 #include <fstream>
 
+std::string &to_lower(std::string &str) {
+    std::transform(str.begin(), str.end(), str.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    return str;
+}
+
+std::vector<std::string> string_split(std::string &str, const std::string &delim) {
+    std::vector<std::string> v;
+    size_t next_pos;
+    do {
+        next_pos = str.find(delim);
+        std::string txt = str.substr(0, next_pos);
+        str.erase(0, next_pos + delim.length());
+
+        if (!txt.empty()) v.push_back(txt);
+    } while (next_pos != std::string::npos);
+
+    return v;
+}
+
+std::string join(const std::vector<std::string> &v, const std::string &delim) {
+    std::string str;
+    for (int i = 0; i < v.size(); ++i) {
+        if (i > 0) str += delim;
+        str += v[i];
+    }
+
+    return str;
+}
+
 typedef enum Token_Type {
-    E_O_F,
-    IDENTIFIER,
-    VALUE,
-    SEPARATOR,
-    SECTION,
+    E_O_F = 0,
+    IDENTIFIER = 1,
+    VALUE = 2,
+    SEPARATOR = 3,
+    SECTION = 4,
 } Token_Type;
 
 class Token {
@@ -24,13 +54,13 @@ public:
 
 class Lexer {
 public:
-    explicit Lexer(std::string source, std::string file_path) : source(std::move(source)), file_path(std::move(file_path)), tokens({}) {}
+    explicit Lexer(std::string source, std::string file_path) : source(std::move(source)),
+                                                                file_path(std::move(file_path)), tokens({}) {}
 
     std::vector<Token> scan_tokens() {
         while (!end()) {
             start = current;
             if (!scan_token()) {
-                std::cerr << "ERROR: something bad happened.\n";
                 tokens.clear();
                 return {};
             }
@@ -38,6 +68,7 @@ public:
 
         return tokens;
     }
+
 private:
     char advance() {
         return source[current++];
@@ -78,7 +109,7 @@ private:
                 while (peek() != '\n' && !end()) advance();
                 break;
             case ' ':
-                // ignore
+                // ignore.
                 break;
             case '\n':
                 line++;
@@ -86,8 +117,9 @@ private:
             default:
                 if (std::isalpha(c)) {
                     while (std::isalpha(peek()) ||
-                            std::isdigit(peek()) ||
-                                peek() == '.' || peek() == '_') advance();
+                           std::isdigit(peek()) ||
+                           peek() == '.' || peek() == '_')
+                        advance();
                     tokens.emplace_back(IDENTIFIER, source.substr(start, current - start));
                     break;
                 } else if (std::isdigit(c)) {
@@ -96,7 +128,8 @@ private:
                     break;
                 }
 
-                std::cerr << "ERROR: unexpected character '" << c << "' found at '" << file_path << ":" << line << "'\n";
+                std::cerr << "ERROR: unexpected character '" << c << "' found at '" << file_path << ":" << line
+                          << "'\n";
                 return false;
         }
         return true;
@@ -114,26 +147,93 @@ private:
     int current = 0;
 };
 
+class Parser {
+public:
+    explicit Parser(std::vector<Token> &tokens) : tokens(tokens) {}
 
-std::string &to_lower(std::string &str) {
-    std::transform(str.begin(), str.end(), str.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
-    return str;
-}
+    void parse_tokens(ini::Object &ini) {
+//        std::cout << "-------------\n";
+//        for (auto &t : tokens) {
+//            std::cout << t.type << " - " << t.txt << std::endl;
+//        }
+//        std::cout << "-------------\n";
+        while (!end()) {
+            std::cout << "-------------\n";
+            std::cout << "Working section: " << section_path << std::endl;
 
-std::vector<std::string> string_split(std::string &str, const std::string &delim) {
-    std::vector<std::string> v;
-    size_t next_pos;
-    do {
-        next_pos = str.find(delim);
-        std::string txt = str.substr(0, next_pos);
-        str.erase(0, next_pos + delim.length());
+            if (!parse_token(ini)) {
+                //ini.get_sections().clear();
+                //ini.get_sections().insert(std::make_pair("global", ini::Section("global")));
+                return;
+            }
+        }
+    }
 
-        if (!txt.empty()) v.push_back(txt);
-    } while (next_pos != std::string::npos);
+private:
+    bool parse_token(ini::Object &ini) {
+        Token &t = advance();
+        std::cout << "parsing: " << t.txt << std::endl;
+        switch (t.type) {
+            case IDENTIFIER: {
+                if (!match(SEPARATOR)) {
+                    std::cerr << "ERROR: invalid token '" << peek().txt << "' found after '" << t.txt << "'\n";
+                    return false;
+                }
+                std::cout << "separator: " << advance().txt << std::endl;
 
-    return v;
-}
+                if (!match(VALUE) && !match(IDENTIFIER)) {
+                    std::cerr << "ERROR: invalid token '" << peek().txt << "' found after '" << t.txt << "'\n";
+                    return false;
+                }
+                Token &v = advance();
+                std::cout << "value: " << v.txt << std::endl;
+
+                if (t.txt.contains(';') || t.txt.contains('#')
+                    || t.txt.contains('=') || t.txt.contains(':') || t.txt.contains(' ')) {
+                    std::cerr << "ERROR: invalid key identifier '" << t.txt << "', use only alphanumeric characters\n";
+                    return false;
+                }
+
+                if (!ini::add_property(ini, section_path, to_lower(t.txt), v.txt)) {
+                    std::cerr << "ERROR: could not insert '" << t.txt << "' - '" << v.txt << "' pair\n";
+                    return false;
+                }
+            }
+                break;
+            case SECTION:
+                if (t.txt.starts_with('.'))
+                    section_path += t.txt;
+                else
+                    section_path = t.txt;
+                break;
+            default:
+                std::cerr << "ERROR: something wrong happened\n";
+                return false;
+        }
+        return true;
+    }
+
+    bool match(Token_Type type) {
+        if (end()) return false;
+        return tokens[current].type == type;
+    }
+
+    Token &advance() {
+        return tokens[current++];
+    }
+
+    Token &peek() {
+        return tokens[current];
+    }
+
+    bool end() {
+        return current >= tokens.size();
+    }
+
+    std::vector<Token> tokens;
+    int current = 0;
+    std::string section_path = "global";
+};
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "misc-no-recursion"
@@ -141,7 +241,7 @@ void section_to_string(std::string &str, const char key_val_separator, const std
     if (section_name != "global") str += "[" + section_name + "]\n";
 
     if (!s.props_empty()) {
-        for (auto &kv : s.get_props()) {
+        for (auto &kv: s.get_props()) {
             // key symbol cannot contain "=" and ";" inside the Windows implementation.
             if (kv.first.contains("=") || kv.first.contains(";")) {
                 std::string error = "ERROR: key \"" + kv.first + R"(" cannot contain any "=" or ";" symbol)" + "\n";
@@ -160,90 +260,65 @@ void section_to_string(std::string &str, const char key_val_separator, const std
     }
 
     if (!s.get_subsecs().empty()) {
-        for (auto &sub : s.get_subsecs()) {
-            section_to_string(str, key_val_separator, section_name + sub.get_name(), sub);
+        for (auto &sub: s.get_subsecs()) {
+            section_to_string(str, key_val_separator, section_name + "." + sub.first, sub.second);
         }
     }
 }
 #pragma clang diagnostic pop
 
-void trim_left(std::string &str) {
-    while (str.starts_with(" ") || str.starts_with("\t")) {
-        str.erase(0, 1);
-    }
-}
-
-std::vector<std::string> tokenize(std::string &source) {
-    std::vector<std::string> v;
-    while (!source.empty()) {
-        bool is_key = false;
-        char key_val_separator;
-        trim_left(source);
-
-        size_t next_pos = source.find(' ');
-        if (next_pos == std::string::npos) {
-            if (!source.empty()) {
-                v.push_back(source);
-                source.clear();
-            }
-            break;
-        }
-
-        std::string str = source.substr(0, next_pos);
-
-        // ";" or "#" at the beginning defines a comment that will be ignored.
-        if (str.starts_with(';') || str.starts_with('#')) str.clear();
-
-        if (str.ends_with(":") || str.ends_with('=')) {
-            is_key = true;
-            key_val_separator = *str.end();
-            str.pop_back();
-        }
-
-        if (!str.empty()) v.push_back(str);
-        if (is_key) v.emplace_back(std::to_string(key_val_separator));
-        source.erase(0, next_pos);
-    }
-
-    return v;
-}
-
 bool ini::add_property(ini::Object &ini, const std::string &section_path, const std::string &key, const std::string &value) {
-    Section &sec = ini.get_sections().at("global");
+    Section &sec = ini.get_global();
 
-    if (section_path != "global") {
+    if (!section_path.empty() && section_path != "global") {
         auto path = string_split(const_cast<std::string &>(section_path), ".");
-        for (auto &s: path) {
+
+        for (auto &i : path) {
             try {
-                sec = ini.get_sections().at(s);
-            } catch (std::out_of_range &e) {
-                return false;
+                sec = sec.get_subsecs().at(i);
+            } catch (std::exception &e) {
+                if (!ini::add_section(ini, i,
+                                      section_path.substr(0, section_path.find(i)))) {
+                    std::cerr << "ERROR: could not create new section '" << i << "'\n";
+                    return false;
+                }
             }
         }
     }
+
+    const_cast<std::string &>(key) = to_lower(const_cast<std::string &>(key));
+
+//    std::cout << sec.get_name() << std::endl;
+//    std::cout << "***************\n";
+//    for (auto &kv : sec.get_props()) {
+//        std::cout << kv.first << " - " << kv.second << std::endl;
+//    }
+//    std::cout << "***************\n";
 
     // case-insensitive.
-    return sec.get_props().insert(std::make_pair(to_lower(const_cast<std::string &>(key)), value)).second;
+    return sec.get_props().insert(std::make_pair(key, value)).second;
 }
 
 bool ini::add_section(ini::Object &ini, const std::string &new_section_name, const std::string &section_path = "") {
-    Section sec;
+    ini::Section sec;
     if (section_path.empty()) {
         sec.set_name(new_section_name);
-        return ini.get_sections().insert(std::make_pair(new_section_name, sec)).second;
+        return ini.get_global().get_subsecs().insert(std::make_pair(new_section_name, sec)).second;
     }
 
     auto path = string_split(const_cast<std::string &>(section_path), ".");
-    for (auto &s : path) {
+
+    ini::Section &s = ini.get_global();
+    for (auto &i: path) {
         try {
-            sec = ini.get_sections().at(s);
+            sec = s.get_subsecs().at(i);
         } catch (std::out_of_range &e) {
+            std::cerr << "EXCEPTION: " << e.what() << std::endl;
             return false;
         }
     }
 
-    sec.get_subsecs().emplace_back(new_section_name);
-    return true;
+    return sec.get_subsecs().insert(std::make_pair(new_section_name, Section(new_section_name))).second;
 }
 
 ini::Object ini::read(const std::string &path) {
@@ -271,10 +346,19 @@ ini::Object ini::read(const std::string &path) {
 
     Lexer lexer(text, path);
     std::vector<Token> t = lexer.scan_tokens();
+    Parser parser(t);
+    parser.parse_tokens(ini);
 
     // DEBUG
-    for (auto &a : t) {
-        std::cout << a.txt << std::endl;
+    std::cout << "-------------\nOutput:\n\n";
+    for (auto &okv : ini.get_global().get_props()) {
+        std::cout << okv.first << " -> " << okv.second << std::endl;
+    }
+    for (auto &okv : ini.get_global().get_subsecs()) {
+        std::cout << "[" << okv.first << "]\n";
+        for (auto &kv: okv.second.get_props()) {
+            std::cout << kv.first << " -> " << kv.second << std::endl;
+        }
     }
 
     return ini;
@@ -292,7 +376,8 @@ bool ini::write(ini::Object &ini, const char key_val_separator) {
     }
 
     std::string content;
-    for (auto &kv : ini.get_sections()) {
+    section_to_string(content, key_val_separator, "global", ini.get_global());
+    for (auto &kv: ini.get_global().get_subsecs()) {
         try {
             section_to_string(content, key_val_separator, kv.first, kv.second);
         } catch (std::exception &e) {
