@@ -8,12 +8,12 @@
 /*
  * ORIGINAL PARSER:
  *
- * key symbol cannot contain "=" and ";" inside the Windows implementation.
+ * ✅ (add_property) key symbol cannot contain "=" and ";" inside the Windows implementation.
  *
  * [symbol] defines a section. There is no section ending until the EOF or another section declaration.
  * (originally sections cannot be nested).
  *
- * case-insensitive.
+ * ✅ (add_property - only for keys) case-insensitive.
  *
  * ";" at the beginning defines a comment that will be ignored.
  *
@@ -21,7 +21,7 @@
  *
  * DERIVED FEATURES:
  *
- * all the properties declared before any section are defined as "global".
+ * ✅ (add_property) all the properties declared before any section are defined as "global".
  *
  * ":" can be used instead of "=".
  *
@@ -137,9 +137,13 @@ namespace ini {
 
     bool add_property(Object &ini, std::string &key, std::string &value, std::string &section_path);
     bool add_property(Object &ini, std::string &&key, std::string &&value, std::string &&section_path = "");
+    bool add_property(Object &ini, std::string &&key, std::string &value, std::string &&section_path = "");
+    bool add_property(Object &ini, std::string &&key, std::string &&value, std::string &section_path);
 
     bool add_section(Object &ini, std::string &new_section_name, std::string &section_path);
     bool add_section(Object &ini, std::string &&new_section_name, std::string &&section_path = "");
+    bool add_section(Object &ini, std::string &new_section_name, std::string &&section_path = "");
+    bool add_section(Object &ini, std::string &&new_section_name, std::string &section_path);
 
     Object read(std::string &path);
     Object read(std::string &&path);
