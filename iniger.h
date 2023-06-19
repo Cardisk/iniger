@@ -25,13 +25,13 @@
  *
  * ":" can be used instead of "=".
  *
- * section nesting is allowed with the usage of a "." notation.
+ * ✅ section nesting is allowed with the usage of a "." notation.
  * relative nesting is allowed without specifying the upper section.
  *
  * "#" can be used instead of ";" to declare a comment.
  *
- * duplicate definition of the same property may cause an abort, override the older value or
- * define a multi-value.
+ * ✅ (add_property fails if key already exists) duplicate definition of the same property may cause an abort,
+ * override the older value or define a multi-value.
  *
  * duplicate definition of a section will merge the properties.
  *
@@ -96,55 +96,6 @@ namespace ini {
         Section global;
     };
 
-    class Extension_error : public std::exception {
-    public:
-        explicit Extension_error() = default;
-        explicit Extension_error(std::string &msg) : m_msg(std::move(msg)) {}
-
-        [[nodiscard]] const char *what() const noexcept override {
-            return m_msg.c_str();
-        }
-
-    private:
-        std::string m_msg;
-    };
-
-    class Separator_error : public std::exception {
-    public:
-        explicit Separator_error() = default;
-        explicit Separator_error(std::string &msg) : m_msg(std::move(msg)) {}
-
-        [[nodiscard]] const char *what() const noexcept override {
-            return m_msg.c_str();
-        }
-
-    private:
-        std::string m_msg;
-    };
-
-    class Key_error : public std::exception {
-    public:
-        explicit Key_error() = default;
-        explicit Key_error(std::string &msg) : m_msg(std::move(msg)) {}
-
-        [[nodiscard]] const char *what() const noexcept override {
-            return m_msg.c_str();
-        }
-
-    private:
-        std::string m_msg;
-    };
-
-    /*
-     * 000
-     * 001
-     * 010
-     * 011
-     * 100
-     * 101
-     * 110
-     * 111
-     */
     bool add_property(Object &ini, std::string &key, std::string &value, std::string &section_path);
     bool add_property(Object &ini, std::string &key, std::string &value, std::string &&section_path = "");
     bool add_property(Object &ini, std::string &key, std::string &&value, std::string &section_path);
