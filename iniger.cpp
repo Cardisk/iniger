@@ -27,6 +27,25 @@ std::vector<std::string> string_split(std::string &str, const std::string &delim
     return v;
 }
 
+void ini_section_to_string(std::string &str, const char kvs, ini::Section &sec, const std::string &sec_name = "") {
+    if (!sec_name.empty()) str += "[" + sec_name + "]\n";
+
+    for (auto &kv : sec.get_props()) {
+        str += kv.first;
+        str.push_back(kvs);
+        if (kv.second.contains(' ')) str += "\"" + kv.second + "\"";
+        else str += " " + kv.second;
+        str += "\n";
+    }
+
+    str += "\n";
+    if (!sec_name.empty()) {
+        for (auto &kv : sec.get_subsecs()) {
+            ini_section_to_string(str, kvs, kv.second, sec_name + "." + kv.first);
+        }
+    }
+}
+
 bool ini::add_property(ini::Object &ini, std::string &key, std::string &value, std::string &section_path) {
     if (key.empty() || value.empty()) return false;
 
@@ -191,5 +210,25 @@ ini::Object ini::read(std::string &&path) {
 }
 
 bool ini::write(ini::Object &ini, const char key_val_separator) {
+    if (!ini.get_file_path().ends_with(".ini")) {
+        std::cerr << "ERROR: file \"" + ini.get_file_path() + "\" has an incompatible extension type\n";
+        return false;
+    }
+
+    if (key_val_separator != '=' && key_val_separator != ':') {
+        std::cerr << "ERROR: separator \"" + std::to_string(key_val_separator) + "\" isn't supported\n";
+        return false;
+    }
+
+    std::string content;
+    ini_section_to_string(content, key_val_separator, ini.get_global());
+    for (auto &kv: ini.get_global().get_subsecs()) {
+        ini_section_to_string(content, key_val_separator, kv.second, kv.first);
+    }
+
+    std::ofstream output_file(ini.get_file_path());
+    output_file << content;
+    output_file.close();
+
     return true;
 }
