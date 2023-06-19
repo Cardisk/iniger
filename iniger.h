@@ -135,20 +135,42 @@ namespace ini {
         std::string m_msg;
     };
 
+    /*
+     * 000
+     * 001
+     * 010
+     * 011
+     * 100
+     * 101
+     * 110
+     * 111
+     */
     bool add_property(Object &ini, std::string &key, std::string &value, std::string &section_path);
-    bool add_property(Object &ini, std::string &&key, std::string &&value, std::string &&section_path = "");
+    bool add_property(Object &ini, std::string &key, std::string &value, std::string &&section_path = "");
+    bool add_property(Object &ini, std::string &key, std::string &&value, std::string &section_path);
+    bool add_property(Object &ini, std::string &key, std::string &&value, std::string &&section_path = "");
+    bool add_property(Object &ini, std::string &&key, std::string &value, std::string &section_path);
     bool add_property(Object &ini, std::string &&key, std::string &value, std::string &&section_path = "");
     bool add_property(Object &ini, std::string &&key, std::string &&value, std::string &section_path);
+    bool add_property(Object &ini, std::string &&key, std::string &&value, std::string &&section_path = "");
+
+    bool add_property(Section &sec, std::string &key, std::string &value);
+    bool add_property(Section &sec, std::string &key, std::string &&value);
+    bool add_property(Section &sec, std::string &&key, std::string &value);
+    bool add_property(Section &sec, std::string &&key, std::string &&value);
 
     bool add_section(Object &ini, std::string &new_section_name, std::string &section_path);
-    bool add_section(Object &ini, std::string &&new_section_name, std::string &&section_path = "");
     bool add_section(Object &ini, std::string &new_section_name, std::string &&section_path = "");
     bool add_section(Object &ini, std::string &&new_section_name, std::string &section_path);
+    bool add_section(Object &ini, std::string &&new_section_name, std::string &&section_path = "");
+
+    bool add_section(Section &sec, std::string &new_section_name);
+    bool add_section(Section &sec, std::string &&new_section_name);
 
     Object read(std::string &path);
     Object read(std::string &&path);
 
-    bool write(Object &ini, const char key_val_separator);
+    bool write(Object &ini, char key_val_separator);
 }
 
 #endif //INIGER_H

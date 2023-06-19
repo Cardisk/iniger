@@ -15,25 +15,16 @@ std::string &to_lower(std::string &str) {
 std::vector<std::string> string_split(std::string &str, const std::string &delim) {
     std::vector<std::string> v;
     size_t next_pos;
+    size_t start = 0;
     do {
-        next_pos = str.find(delim);
-        std::string txt = str.substr(0, next_pos);
-        str.erase(0, next_pos + delim.length());
+        next_pos = str.find(delim, start);
+        std::string txt = str.substr(start, next_pos - start);
+        start = next_pos + 1;
 
         if (!txt.empty()) v.push_back(txt);
     } while (next_pos != std::string::npos);
 
     return v;
-}
-
-std::string join(const std::vector<std::string> &v, const std::string &delim) {
-    std::string str;
-    for (int i = 0; i < v.size(); ++i) {
-        if (i > 0) str += delim;
-        str += v[i];
-    }
-
-    return str;
 }
 
 bool ini::add_property(ini::Object &ini, std::string &key, std::string &value, std::string &section_path) {
@@ -45,30 +36,43 @@ bool ini::add_property(ini::Object &ini, std::string &key, std::string &value, s
         return false;
     }
 
-    ini::Section &sec = ini.get_global();
+    ini::Section *sec = &ini.get_global();
 
     if (!section_path.empty()) {
         auto path = string_split(section_path, ".");
-
         for (auto &i : path) {
             try {
-                sec = sec.get_subsecs().at(i);
+                i = to_lower(i);
+                sec = &sec->get_subsecs().at(i);
             } catch (std::out_of_range &e) {
                 // keep adding missing sections.
-                if (!ini::add_section(ini, i, section_path.substr(0, section_path.find(i)))) {
+                if (!ini::add_section(*sec, i)) {
                     std::cerr << "[ERROR]: could not create new section '" << i << "'\n";
                     return false;
                 }
-                sec = sec.get_subsecs().at(i);
+
+                sec = &sec->get_subsecs().at(i);
             }
         }
     }
 
     // case-insensitive.
-    return sec.get_props().insert(std::make_pair(to_lower(key), value)).second;
+    return ini::add_property(*sec, key, value);
 }
 
-bool ini::add_property(ini::Object &ini, std::string &&key, std::string &&value, std::string &&section_path) {
+bool ini::add_property(ini::Object &ini, std::string &key, std::string &value, std::string &&section_path) {
+    return ini::add_property(ini, key, value, section_path);
+}
+
+bool ini::add_property(ini::Object &ini, std::string &key, std::string &&value, std::string &section_path) {
+    return ini::add_property(ini, key, value, section_path);
+}
+
+bool ini::add_property(ini::Object &ini, std::string &key, std::string &&value, std::string &&section_path) {
+    return ini::add_property(ini, key, value, section_path);
+}
+
+bool ini::add_property(ini::Object &ini, std::string &&key, std::string &value, std::string &section_path) {
     return ini::add_property(ini, key, value, section_path);
 }
 
@@ -80,19 +84,45 @@ bool ini::add_property(ini::Object &ini, std::string &&key, std::string &&value,
     return ini::add_property(ini, key, value, section_path);
 }
 
+bool ini::add_property(ini::Object &ini, std::string &&key, std::string &&value, std::string &&section_path) {
+    return ini::add_property(ini, key, value, section_path);
+}
+
+bool ini::add_property(ini::Section &sec, std::string &key, std::string &value) {
+    try {
+        sec.get_props().insert(std::make_pair(to_lower(key), value));
+    } catch (std::bad_alloc &e) {
+        std::cerr << "[ERROR]: " << e.what() << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool ini::add_property(ini::Section &sec, std::string &key, std::string &&value) {
+    return ini::add_property(sec, key, value);
+}
+
+bool ini::add_property(ini::Section &sec, std::string &&key, std::string &value) {
+    return ini::add_property(sec, key, value);
+}
+
+bool ini::add_property(ini::Section &sec, std::string &&key, std::string &&value) {
+    return ini::add_property(sec, key, value);
+}
+
 bool ini::add_section(ini::Object &ini, std::string &new_section_name, std::string &section_path) {
     if (new_section_name.empty()) {
         std::cerr << "[ERROR]: section name should not be empty\n";
         return false;
     }
 
-    ini::Section &sec = ini.get_global();
+    ini::Section *sec = &ini.get_global();
     if (!section_path.empty()) {
         auto path = string_split(section_path, ".");
 
         for (auto &i : path) {
             try {
-                sec = sec.get_subsecs().at(i);
+                sec = &sec->get_subsecs().at(i);
             } catch (std::out_of_range &e) {
                 // keep adding missing sections.
                 i = to_lower(i);
@@ -103,22 +133,17 @@ bool ini::add_section(ini::Object &ini, std::string &new_section_name, std::stri
                 //                        ^ this should be deleted as well
                 // XXX: maybe this is useless because if I tried to create a specific
                 //      path is because I needed it.
-                if (!sec.get_subsecs().insert(
-                        std::make_pair(i, Section(i))).second) {
+                if (!ini::add_section(*sec, i)) {
                     std::cerr << "[ERROR]: could not create missing '" << i << "' section\n";
                     return false;
                 }
-                sec = sec.get_subsecs().at(i);
+                sec = &sec->get_subsecs().at(i);
             }
         }
     }
 
     new_section_name = to_lower(new_section_name);
-    return sec.get_subsecs().insert(std::make_pair(new_section_name, Section(new_section_name))).second;
-}
-
-bool ini::add_section(ini::Object &ini, std::string &&new_section_name, std::string &&section_path) {
-    return ini::add_section(ini, new_section_name, section_path);
+    return ini::add_section(*sec, new_section_name);
 }
 
 bool ini::add_section(ini::Object &ini, std::string &new_section_name, std::string &&section_path) {
@@ -127,6 +152,25 @@ bool ini::add_section(ini::Object &ini, std::string &new_section_name, std::stri
 
 bool ini::add_section(ini::Object &ini, std::string &&new_section_name, std::string &section_path) {
     return ini::add_section(ini, new_section_name, section_path);
+}
+
+bool ini::add_section(ini::Object &ini, std::string &&new_section_name, std::string &&section_path) {
+    return ini::add_section(ini, new_section_name, section_path);
+}
+
+bool ini::add_section(ini::Section &sec, std::string &new_section_name) {
+    new_section_name = to_lower(new_section_name);
+    try {
+        sec.get_subsecs().insert(std::make_pair(new_section_name, Section(new_section_name)));
+    } catch (std::bad_alloc &e) {
+        std::cerr << "[ERROR]: " << e.what() << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool ini::add_section(ini::Section &sec, std::string &&new_section_name) {
+    return ini::add_section(sec, new_section_name);
 }
 
 ini::Object ini::read(std::string &path) {
