@@ -89,6 +89,13 @@ bool ini::add_property(ini::Object &ini, std::string &&key, std::string &&value,
 }
 
 bool ini::add_property(ini::Section &sec, std::string &key, std::string &value) {
+    if (key.empty() || value.empty()) return false;
+
+    if (key.contains('=') || key.contains(';')) {
+        std::cerr << "[ERROR]: key symbol cannot contain \"=\" and \";\" inside the Windows implementation\n";
+        return false;
+    }
+
     try {
         sec.get_props().insert(std::make_pair(to_lower(key), value));
     } catch (std::bad_alloc &e) {
@@ -159,6 +166,8 @@ bool ini::add_section(ini::Object &ini, std::string &&new_section_name, std::str
 }
 
 bool ini::add_section(ini::Section &sec, std::string &new_section_name) {
+    if (new_section_name.empty()) return false;
+
     new_section_name = to_lower(new_section_name);
     try {
         sec.get_subsecs().insert(std::make_pair(new_section_name, Section(new_section_name)));
