@@ -3,43 +3,20 @@
 #include "iniger.h"
 
 int main() {
-    ini::Object ini("../test1.ini");
+    ini::Object out("../test1.ini");
+    ini::add_property(out, "test_global1", "value_global1");
+    ini::add_property(out, "test_foo1", "value_foo1", "Foo");
+    ini::add_property(out, "test_foo2", "value_foo2", "Foo");
+    ini::add_property(out, "test_bar", "value_bar", "Bar");
+    ini::add_property(out, "test_foo_baz", "value_foo_baz", "Foo.Baz");
+    ini::add_property(out, "test_foo_baz_bar", "value_foo_baz_bar", "Foo.Baz.Bar");
 
     std::cout << std::boolalpha;
-    std::cout << "add_property result: "
-                << ini::add_property(ini, "global", "writing", "test")
-                << std::endl;
-    std::cout << "global empty: " << ini.get_global().props_empty() << std::endl;
+    std::cout << "[INFO]: write result: " << ini::write(out, ':') << std::endl;
+    ini::Object in = ini::read("../test1.ini");
+    in.set_file_path("../test2.ini");
+    std::cout << "[INFO]: re-output result: " << ini::write(in, ':') << std::endl;
 
-    std::cout << "-----------------\nGlobal:\n";
-    for (auto &i : ini.get_global().get_props()) {
-        std::cout << i.first << " -> " << i.second << std::endl;
-    }
-    std::cout << "-----------------\n";
-
-    std::cout << "add_property result 2: "
-              << ini::add_property(ini, "FOO", "bar", "baz")
-              << std::endl;
-
-    std::cout << "-----------------\nSubSecs:\n";
-    for (auto &i : ini.get_global().get_subsecs()) {
-        std::cout << i.first << std::endl;
-        for (auto &j : i.second.get_props()) {
-            std::cout << "\t" << j.first << " -> " << j.second << std::endl;
-        }
-    }
-    std::cout << "-----------------\n";
-
-//    for (auto &i : ini.get_global().get_props()) {
-//        std::cout << i.first << " -> " << i.second << std::endl;
-//    }
-//    std::cout << "-------------------\n";
-//    for (auto &i : ini.get_global().get_subsecs().at("FOO").get_props()) {
-//        std::cout << i.first << " -> " << i.second << std::endl;
-//    }
-
-    std::cout << "write result: " << ini::write(ini, ':');
-
-//    ini::read("../test.ini");
+    std::cout << std::noboolalpha;
     return 0;
 }
