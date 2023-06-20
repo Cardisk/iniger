@@ -12,6 +12,195 @@ std::string &to_lower(std::string &str) {
     return str;
 }
 
+typedef enum ini_Token_Type {
+    E_O_F = 0,
+    IDENTIFIER = 1,
+    SEPARATOR = 2,
+    SECTION = 3,
+} ini_Token_Type;
+
+class ini_Token {
+public:
+    explicit ini_Token(ini_Token_Type type = E_O_F, std::string txt = "") : type(type), txt(std::move(txt)) {}
+
+    ini_Token_Type type;
+    std::string txt;
+};
+
+class ini_Lexer {
+public:
+    explicit ini_Lexer(std::string source, std::string file_path) : source(std::move(source)),
+                                                                    file_path(std::move(file_path)), tokens({}) {}
+
+    std::vector<ini_Token> scan_tokens() {
+        while (!end()) {
+            start = current;
+            if (!scan_token()) {
+                tokens.clear();
+                return {};
+            }
+        }
+
+        return tokens;
+    }
+
+private:
+    char advance() {
+        return source[current++];
+    }
+
+    char peek() {
+        if (end()) return '\0';
+        return source[current];
+    }
+
+    bool scan_token() {
+        char c = advance();
+        switch (c) {
+            case '[':
+                while (peek() != ']' && !end()) advance();
+                if (end()) {
+                    std::cerr << "[ERROR]: unclosed section definition inside '" << file_path << "'\n";
+                    return false;
+                }
+                advance();
+                tokens.emplace_back(SECTION, source.substr(start + 1, current - (start + 1) - 1));
+                break;
+            case '"':
+                while (peek() != '"' && !end()) advance();
+                if (end()) {
+                    std::cerr << "[ERROR]: unclosed string definition inside '" << file_path << "'\n";
+                    return false;
+                }
+                advance();
+                tokens.emplace_back(IDENTIFIER, source.substr(start, current - (start + 1) - 1));
+                break;
+            case ':':
+            case '=':
+                tokens.emplace_back(SEPARATOR, source.substr(start, current - start));
+                break;
+            case ';':
+            case '#':
+                while (peek() != '\n' && !end()) advance();
+                break;
+            case ' ':
+                // ignore.
+                break;
+            case '\n':
+                line++;
+                break;
+            default:
+                if (std::isalnum(static_cast<unsigned char>(c))) {
+                    while (std::isalnum(static_cast<unsigned char>(peek())) ||
+                            peek() == '.' || peek() == '_') {
+                        advance();
+                    }
+                    tokens.emplace_back(IDENTIFIER, source.substr(start, current - start));
+                    break;
+                }
+
+                std::cerr << "[ERROR]: unexpected character '" << c << "' found at '" << file_path << ":" << line
+                          << "'\n";
+                return false;
+        }
+        return true;
+    }
+
+    bool end() {
+        return current >= source.size();
+    }
+
+    const std::string source;
+    std::vector<ini_Token> tokens;
+    std::string file_path;
+    int line = 1;
+    int start = 0;
+    int current = 0;
+};
+
+
+class ini_Parser {
+public:
+    explicit ini_Parser(std::vector<ini_Token> &tokens) : tokens(tokens) {}
+
+    bool parse_tokens(ini::Object &ini) {
+        while (!end()) {
+            if (!parse_token(ini)) return false;
+        }
+
+        return true;
+    }
+
+private:
+    bool parse_token(ini::Object &ini) {
+        ini_Token &t = advance();
+        switch (t.type) {
+            case IDENTIFIER: {
+                if (!match(SEPARATOR)) {
+                    std::cerr << "[ERROR]: invalid token '" << peek().txt << "' found after '" << t.txt << "'\n";
+                    return false;
+                }
+                advance();
+
+                if (!match(IDENTIFIER)) {
+                    std::cerr << "[ERROR]: invalid token '" << peek().txt << "' found after '" << t.txt << "'\n";
+                    return false;
+                }
+                ini_Token &v = advance();
+
+                if (t.txt.contains(';') || t.txt.contains('#')
+                    || t.txt.contains('=') || t.txt.contains(':') || t.txt.contains(' ')) {
+                    std::cerr << "[ERROR]: invalid key identifier '" << t.txt << "', use only alphanumeric characters\n";
+                    return false;
+                }
+
+                if (!ini::add_property(ini, to_lower(t.txt), v.txt, section_path)) {
+                    std::cerr << "[ERROR]: something happened during '" << t.txt << "' -> '" << v.txt << "' insertion\n";
+                    return false;
+                }
+            }
+                break;
+            case SECTION:
+                if (!t.txt.starts_with('.')) {
+                    section_path = t.txt;
+                    break;
+                }
+
+                if (section_path.empty()) {
+                    std::cerr << "[ERROR]: relative nesting of '" << t.txt << "' can't be performed, missing parent section\n";
+                    return false;
+                }
+                section_path += t.txt;
+                break;
+            default:
+                std::cerr << "[ERROR]: something wrong happened\n";
+                return false;
+        }
+        return true;
+    }
+
+    bool match(ini_Token_Type type) {
+        if (end()) return false;
+        return tokens[current].type == type;
+    }
+
+    ini_Token &advance() {
+        return tokens[current++];
+    }
+
+    ini_Token &peek() {
+        return tokens[current];
+    }
+
+    bool end() {
+        return current >= tokens.size();
+    }
+
+    std::vector<ini_Token> tokens;
+    int current = 0;
+    std::string section_path;
+};
+
 std::vector<std::string> string_split(std::string &str, const std::string &delim) {
     std::vector<std::string> v;
     size_t next_pos;
@@ -222,8 +411,30 @@ ini::Object ini::read(std::string &&path) {
 }
 
 bool ini::read(ini::Object &ini) {
-    //TODO: Lexing and parsing
-    return true;
+    std::string text;
+
+    std::ifstream file;
+    file.open(ini.get_file_path());
+
+    if (!file.is_open()) {
+        std::cerr << "[ERROR]: failed to open '" << ini.get_file_path() << "'\n";
+        return false;
+    }
+
+    std::string line;
+    while (file.good()) {
+        std::getline(file, line);
+        text += line + "\n";
+    }
+    file.close();
+
+    // lexing.
+    ini_Lexer lexer(text, ini.get_file_path());
+    auto tokens = lexer.scan_tokens();
+
+    // parsing.
+    ini_Parser parser(tokens);
+    return parser.parse_tokens(ini);
 }
 
 bool ini::write(ini::Object &ini, const char key_val_separator) {
