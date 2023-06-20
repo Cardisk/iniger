@@ -87,6 +87,10 @@ namespace ini {
             return file_path;
         }
 
+        void set_file_path(const std::string &path) {
+            file_path = path;
+        }
+
         [[nodiscard]] Section &get_global() {
             return global;
         }
@@ -120,6 +124,8 @@ namespace ini {
 
     Object read(std::string &path);
     Object read(std::string &&path);
+
+    bool read(Object &ini);
 
     bool write(Object &ini, char key_val_separator);
 }

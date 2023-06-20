@@ -27,13 +27,14 @@ std::vector<std::string> string_split(std::string &str, const std::string &delim
     return v;
 }
 
+// sec_name empty == ini.get_global()
 void ini_section_to_string(std::string &str, const char kvs, ini::Section &sec, const std::string &sec_name = "") {
     if (!sec_name.empty()) str += "[" + sec_name + "]\n";
 
     for (auto &kv : sec.get_props()) {
         str += kv.first;
         str.push_back(kvs);
-        if (kv.second.contains(' ')) str += "\"" + kv.second + "\"";
+        if (kv.second.contains(' ')) str += " \"" + kv.second + "\"";
         else str += " " + kv.second;
         str += "\n";
     }
@@ -202,11 +203,27 @@ bool ini::add_section(ini::Section &sec, std::string &&new_section_name) {
 }
 
 ini::Object ini::read(std::string &path) {
-    return ini::Object("");
+    ini::Object ini(path);
+
+    if (!path.ends_with(".ini")) {
+        std::cerr << "ERROR: file \"" + ini.get_file_path() + "\" has an incompatible extension type\n";
+        return ini;
+    }
+
+    if (!ini::read(ini)) {
+        std::cerr << "[ERROR]: failed during file reading\n";
+    }
+
+    return ini;
 }
 
 ini::Object ini::read(std::string &&path) {
     return ini::read(path);
+}
+
+bool ini::read(ini::Object &ini) {
+    //TODO: Lexing and parsing
+    return true;
 }
 
 bool ini::write(ini::Object &ini, const char key_val_separator) {
