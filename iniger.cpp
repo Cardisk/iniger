@@ -326,6 +326,36 @@ bool ini::add_property(ini::Section &sec, std::string &&key, std::string &&value
     return ini::add_property(sec, key, value);
 }
 
+std::string &ini::get_property(ini::Object &ini, std::string &key, std::string &section_path) {
+    ini::Section *sec = &ini.get_global();
+
+    if (!section_path.empty()) {
+        auto path = string_split(section_path, ".");
+        for (auto &i : path) {
+            try {
+                i = to_lower(i);
+                sec = &sec->get_subsecs().at(i);
+            } catch (std::out_of_range &e) {
+                throw std::out_of_range("ini::get_property: missing section '" + i + "'");
+            }
+        }
+    }
+
+    return sec->get_props().at(key);
+}
+
+std::string &ini::get_property(ini::Object &ini, std::string &key, std::string &&section_path) {
+    return ini::get_property(ini, key, section_path);
+}
+
+std::string &ini::get_property(ini::Object &ini, std::string &&key, std::string &section_path) {
+    return ini::get_property(ini, key, section_path);
+}
+
+std::string &ini::get_property(ini::Object &ini, std::string &&key, std::string &&section_path) {
+    return ini::get_property(ini, key, section_path);
+}
+
 bool ini::add_section(ini::Object &ini, std::string &new_section_name, std::string &section_path) {
     if (new_section_name.empty()) {
         std::cerr << "[ERROR]: section name should not be empty\n";
@@ -389,6 +419,37 @@ bool ini::add_section(ini::Section &sec, std::string &new_section_name) {
 
 bool ini::add_section(ini::Section &sec, std::string &&new_section_name) {
     return ini::add_section(sec, new_section_name);
+}
+
+ini::Section &ini::get_section(ini::Object &ini, std::string &section_name, std::string &section_path) {
+    ini::Section *sec = &ini.get_global();
+
+    if (!section_path.empty()) {
+        auto path = string_split(section_path, ".");
+        for (auto &i : path) {
+            try {
+                i = to_lower(i);
+                sec = &sec->get_subsecs().at(i);
+            } catch (std::out_of_range &e) {
+                throw std::out_of_range("ini::get_section: missing section '" + i + "'");
+            }
+        }
+    }
+
+    section_name = to_lower(section_name);
+    return sec->get_subsecs().at(section_name);
+}
+
+ini::Section &ini::get_section(ini::Object &ini, std::string &section_name, std::string &&section_path) {
+    return ini::get_section(ini, section_name, section_path);
+}
+
+ini::Section &ini::get_section(ini::Object &ini, std::string &&section_name, std::string &section_path) {
+    return ini::get_section(ini, section_name, section_path);
+}
+
+ini::Section &ini::get_section(ini::Object &ini, std::string &&section_name, std::string &&section_path) {
+    return ini::get_section(ini, section_name, section_path);
 }
 
 ini::Object ini::read(std::string &path) {

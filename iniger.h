@@ -114,6 +114,11 @@ namespace ini {
     bool add_property(Section &sec, std::string &&key, std::string &value);
     bool add_property(Section &sec, std::string &&key, std::string &&value);
 
+    std::string &get_property(Object &ini, std::string &key, std::string &section_path);
+    std::string &get_property(Object &ini, std::string &key, std::string &&section_path = "");
+    std::string &get_property(Object &ini, std::string &&key, std::string &section_path);
+    std::string &get_property(Object &ini, std::string &&key, std::string &&section_path = "");
+
     bool add_section(Object &ini, std::string &new_section_name, std::string &section_path);
     bool add_section(Object &ini, std::string &new_section_name, std::string &&section_path = "");
     bool add_section(Object &ini, std::string &&new_section_name, std::string &section_path);
@@ -121,6 +126,11 @@ namespace ini {
 
     bool add_section(Section &sec, std::string &new_section_name);
     bool add_section(Section &sec, std::string &&new_section_name);
+
+    Section &get_section(Object &ini, std::string &section_name, std::string &section_path);
+    Section &get_section(Object &ini, std::string &section_name, std::string &&section_path = "");
+    Section &get_section(Object &ini, std::string &&section_name, std::string &section_path);
+    Section &get_section(Object &ini, std::string &&section_name, std::string &&section_path = "");
 
     Object read(std::string &path);
     Object read(std::string &&path);
