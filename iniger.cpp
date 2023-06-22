@@ -474,6 +474,11 @@ ini::Object ini::read(std::string &&path) {
 bool ini::read(ini::Object &ini) {
     std::string text;
 
+    if (!ini.get_file_path().ends_with(".ini")) {
+        std::cerr << "ERROR: file \"" + ini.get_file_path() + "\" has an incompatible extension type\n";
+        return false;
+    }
+
     std::ifstream file;
     file.open(ini.get_file_path());
 
