@@ -83,3 +83,5 @@ int main(void) {
 ```
 
 ## License
+
+[MIT](https://github.com/Cardisk/iniger/blob/main/LICENSE)
