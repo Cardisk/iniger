@@ -456,7 +456,7 @@ ini::Object ini::read(std::string &path) {
     ini::Object ini(path);
 
     if (!path.ends_with(".ini")) {
-        std::cerr << "ERROR: file \"" + ini.get_file_path() + "\" has an incompatible extension type\n";
+        std::cerr << "[ERROR]: file \"" + ini.get_file_path() + "\" has an incompatible extension type\n";
         return ini;
     }
 
@@ -475,7 +475,7 @@ bool ini::read(ini::Object &ini) {
     std::string text;
 
     if (!ini.get_file_path().ends_with(".ini")) {
-        std::cerr << "ERROR: file \"" + ini.get_file_path() + "\" has an incompatible extension type\n";
+        std::cerr << "[ERROR]: file \"" + ini.get_file_path() + "\" has an incompatible extension type\n";
         return false;
     }
 
@@ -505,12 +505,12 @@ bool ini::read(ini::Object &ini) {
 
 bool ini::write(ini::Object &ini, const char key_val_separator) {
     if (!ini.get_file_path().ends_with(".ini")) {
-        std::cerr << "ERROR: file \"" + ini.get_file_path() + "\" has an incompatible extension type\n";
+        std::cerr << "[ERROR]: file \"" + ini.get_file_path() + "\" has an incompatible extension type\n";
         return false;
     }
 
     if (key_val_separator != '=' && key_val_separator != ':') {
-        std::cerr << "ERROR: separator \"" + std::to_string(key_val_separator) + "\" isn't supported\n";
+        std::cerr << "[ERROR]: separator \"" + std::to_string(key_val_separator) + "\" isn't supported\n";
         return false;
     }
 
