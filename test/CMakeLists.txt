@@ -3,6 +3,9 @@ project(inigerTest)
 
 set(CMAKE_CXX_STANDARD 23)
 
+# I don't know why but cmake said it was not present inside the structure
+set(GOOGLETEST_VERSION 1.13.0)
+
 set(LIB ../iniger.h ../iniger.cpp)
 set(TEST objectConstructionTest.cpp propertyInsertionFixture.cpp sectionInsertionTest.cpp readWriteTest.cpp)
 
